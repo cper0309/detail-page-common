@@ -35,10 +35,16 @@ def parse_page(html):
         for tab in sys_req_tabs.find_all('div', class_='sysreq_tab'):
             os_type = tab.get('data-os')
             sys_req_content = sys_req_section.find('div', class_='sysreq_content', attrs={'data-os': os_type})
+            # 불필요한 태그 제거
+            for ul in sys_req_content.find_all('ul', class_='bb_ul'):
+                ul.unwrap()
             sys_req_html += f"<h3>{tab.text.strip()} 요구사항</h3>{str(sys_req_content)}"
     else:
         # 탭이 없는 경우
-        sys_req_html += str(sys_req_section.find('div', class_='sysreq_contents'))
+        sys_req_contents = sys_req_section.find('div', class_='sysreq_contents')
+        for ul in sys_req_contents.find_all('ul', class_='bb_ul'):
+            ul.unwrap()
+        sys_req_html += str(sys_req_contents)
 
     # 동영상 URL 추출
     video_section = soup.find('div', id='highlight_player_area')
@@ -239,3 +245,6 @@ if __name__ == '__main__':
     output_file_name = 'stardew_valley'
     main(url, github_url, output_path=f"{output_file_name}.html")
 
+    url = 'https://store.steampowered.com/app/108600/Project_Zomboid/'
+    output_file_name = 'zomboid'
+    main(url, github_url, output_path=f"{output_file_name}.html")
