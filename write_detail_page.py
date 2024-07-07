@@ -30,15 +30,32 @@ def parse_page(html):
 
     sys_req_html = str(sys_req_section)
 
-    # 두 번째 동영상 URL 추출
+    # 동영상 URL 추출
     video_section = soup.find('div', id='highlight_player_area')
     video_url = None
     if video_section:
         videos = video_section.find_all('div', class_='highlight_player_item highlight_movie')
-        if len(videos) > 1 and 'data-mp4-source' in videos[1].attrs:
-            video_url = videos[1]['data-mp4-source']
+        if 'data-mp4-source' in videos[0].attrs:
+            video_url = videos[0]['data-mp4-source']
 
-    return description_html, sys_req_html, video_url
+    # 추가할 정보 추출
+    game_header_image = soup.find('img', class_='game_header_image_full')['src']
+    game_name = soup.find('div', class_='apphub_AppName').text.strip()
+
+    app_header_grid_container = soup.find('div', id='appHeaderGridContainer')
+    developers = app_header_grid_container.find('div', class_='grid_label', text='개발자').find_next_sibling('div', class_='grid_content').text.strip()
+    publishers = app_header_grid_container.find('div', class_='grid_label', text='배급사').find_next_sibling('div', class_='grid_content').text.strip()
+    release_date = app_header_grid_container.find('div', class_='grid_label grid_date', text='출시일').find_next_sibling('div', class_='grid_content grid_date').text.strip()
+
+    extra_info = {
+        'game_header_image': game_header_image,
+        'game_name': game_name,
+        'developers': developers,
+        'publishers': publishers,
+        'release_date': release_date,
+    }
+
+    return description_html, sys_req_html, video_url, extra_info
 
 def style_html_content(description_html, sys_req_html):
     description_soup = BeautifulSoup(description_html, 'html.parser')
@@ -52,7 +69,7 @@ def style_html_content(description_html, sys_req_html):
     # 시스템 요구 사항 영역 스타일 설정
     sys_req_div = sys_req_soup.find('div', class_='game_page_autocollapse sys_req')
     if sys_req_div:
-        sys_req_div['style'] = 'width: 40%; margin: 20pt auto; text-align: justify;'
+        sys_req_div['style'] = 'width: 60%; margin: 20pt auto; text-align: justify;'
 
     for element in sys_req_soup.find_all():
         if element.name not in ['h2', 'u', 'img', 'div']:
@@ -81,7 +98,7 @@ def style_html_content(description_html, sys_req_html):
 
     return str(description_soup), str(sys_req_soup)
 
-def create_html_page(video_url, styled_description_html, styled_sys_req_html, images, output_path='detailed_page.html'):
+def create_html_page(video_url, styled_description_html, styled_sys_req_html, images, extra_info, output_path='detailed_page.html'):
     # 비디오 HTML 생성
     video_html = f"""
     <div style="width: 90%; margin: 20px auto; text-align: center;">
@@ -96,6 +113,17 @@ def create_html_page(video_url, styled_description_html, styled_sys_req_html, im
     image_html = ""
     for image in images:
         image_html += f'<div style="text-align: center;"><img src="{image}" style="width: 90%;"></div>\n'
+
+    # 추가 정보 HTML 생성
+    extra_info_html = f"""
+    <div style="text-align: center; margin: 20px auto;">
+        <img src="{extra_info['game_header_image']}" style="width: 90%; margin=0;"><br>
+        <h2 style="font-size: 30pt;"><br><strong>{extra_info['game_name']}</strong></h2><br>
+        <p style="font-size: 14pt;"><strong>개발자</strong>: {extra_info['developers']}</p><br>
+        <p style="font-size: 14pt;"><strong>배급사</strong>: {extra_info['publishers']}</p><br>
+        <p style="font-size: 14pt;"><strong>출시일</strong>: {extra_info['release_date']}</p><br>
+    </div>
+    """
 
     # HTML template
     html_template = f"""
@@ -145,6 +173,7 @@ def create_html_page(video_url, styled_description_html, styled_sys_req_html, im
     </head>
     <body>
         {image_html}
+        {extra_info_html}
         {video_html}
         <div class="content">
             {styled_description_html}
@@ -174,15 +203,15 @@ def fetch_images_from_github(github_url):
             raw_image_url = f"{base_url}{user_repo_path}/{branch_path}/{link['href'].split('/')[-1]}"
             images.add(raw_image_url)
 
-    images = sorted(images)  # 이름 순서대로 정렬
+    images = sorted(images) # 이름 순서대로 정렬
     return images
 
 def main(url, github_url, output_path='detailed_page.html'):
     html = fetch_page(url)
-    description_html, sys_req_html, video_url = parse_page(html)
+    description_html, sys_req_html, video_url, extra_info = parse_page(html)
     styled_description_html, styled_sys_req_html = style_html_content(description_html, sys_req_html)
     images = fetch_images_from_github(github_url)
-    create_html_page(video_url, styled_description_html, styled_sys_req_html, images, output_path)
+    create_html_page(video_url, styled_description_html, styled_sys_req_html, images, extra_info, output_path)
 
 if __name__ == '__main__':
     url = 'https://store.steampowered.com/app/1623730/Palworld/'
