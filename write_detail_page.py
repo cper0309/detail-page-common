@@ -28,7 +28,17 @@ def parse_page(html):
     if not sys_req_section:
         raise Exception("Required sections (game_page_autocollapse sys_req) not found in the HTML")
 
-    sys_req_html = str(sys_req_section)
+    sys_req_html = "<h2>시스템 요구 사항</h2>"
+    sys_req_tabs = sys_req_section.find('div', class_='sysreq_tabs')
+    if sys_req_tabs:
+        # 탭이 있는 경우
+        for tab in sys_req_tabs.find_all('div', class_='sysreq_tab'):
+            os_type = tab.get('data-os')
+            sys_req_content = sys_req_section.find('div', class_='sysreq_content', attrs={'data-os': os_type})
+            sys_req_html += f"<h3>{tab.text.strip()} 요구사항</h3>{str(sys_req_content)}"
+    else:
+        # 탭이 없는 경우
+        sys_req_html += str(sys_req_section.find('div', class_='sysreq_contents'))
 
     # 동영상 URL 추출
     video_section = soup.find('div', id='highlight_player_area')
@@ -67,13 +77,17 @@ def style_html_content(description_html, sys_req_html):
             element['style'] = 'font-size: 12pt; text-align: center; width: 90%; margin: 20pt auto;'
 
     # 시스템 요구 사항 영역 스타일 설정
-    sys_req_div = sys_req_soup.find('div', class_='game_page_autocollapse sys_req')
-    if sys_req_div:
+    sys_req_divs = sys_req_soup.find_all('div', class_='game_area_sys_req')
+    for sys_req_div in sys_req_divs:
         sys_req_div['style'] = 'width: 60%; margin: 20pt auto; text-align: justify;'
 
     for element in sys_req_soup.find_all():
         if element.name not in ['h2', 'u', 'img', 'div']:
             element['style'] = 'font-size: 12pt;'
+
+    # OS 요구사항 제목 스타일 설정
+    for os_heading in sys_req_soup.find_all('h3'):
+        os_heading['style'] = 'width: 60%; margin: 20pt auto; text-align: center; font-size: 16pt; font-weight: bold;'
 
     # "최소"와 "권장" 텍스트 스타일 설정 및 불필요한 태그 제거
     for element in sys_req_soup.find_all(string=lambda text: "최소:" in text or "권장:" in text):
@@ -199,11 +213,12 @@ def fetch_images_from_github(github_url):
 
     images = set()  # 이미지를 중복 없이 저장하기 위해 set 사용
     for link in soup.find_all('a', href=True):
-        if link['href'].endswith(('.png', '.jpg', '.jpeg', '.gif')):
-            raw_image_url = f"{base_url}{user_repo_path}/{branch_path}/{link['href'].split('/')[-1]}"
+        href = link['href']
+        if href.endswith(('.png', '.jpg', '.jpeg', '.gif')):
+            raw_image_url = f"{base_url}{user_repo_path}/{branch_path}/{href.split('/')[-1]}"
             images.add(raw_image_url)
-
-    images = sorted(images) # 이름 순서대로 정렬
+            print(raw_image_url)
+    images = sorted(images)  # 이름 순서대로 정렬
     return images
 
 def main(url, github_url, output_path='detailed_page.html'):
@@ -214,7 +229,13 @@ def main(url, github_url, output_path='detailed_page.html'):
     create_html_page(video_url, styled_description_html, styled_sys_req_html, images, extra_info, output_path)
 
 if __name__ == '__main__':
-    url = 'https://store.steampowered.com/app/1623730/Palworld/'
     github_url = 'https://github.com/cper0309/detail-page-common/tree/main/detail-page-v1-240707'
+
+    url = 'https://store.steampowered.com/app/1623730/Palworld/'
     output_file_name = 'palworld'
     main(url, github_url, output_path=f"{output_file_name}.html")
+
+    url = 'https://store.steampowered.com/app/413150/Stardew_Valley/'
+    output_file_name = 'stardew_valley'
+    main(url, github_url, output_path=f"{output_file_name}.html")
+
