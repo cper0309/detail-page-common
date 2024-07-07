@@ -28,11 +28,6 @@ def parse_page(html):
     if not sys_req_section:
         raise Exception("Required sections (game_page_autocollapse sys_req) not found in the HTML")
 
-    # # "추가 사항"을 포함하는 항목 제거
-    # for li in sys_req_section.find_all('li'):
-    #     if "추가 사항" in li.get_text():
-    #         li.decompose()
-
     sys_req_html = str(sys_req_section)
 
     # 두 번째 동영상 URL 추출
@@ -86,7 +81,7 @@ def style_html_content(description_html, sys_req_html):
 
     return str(description_soup), str(sys_req_soup)
 
-def create_html_page(video_url, styled_description_html, styled_sys_req_html, output_path='detailed_page.html'):
+def create_html_page(video_url, styled_description_html, styled_sys_req_html, images, output_path='detailed_page.html'):
     # 비디오 HTML 생성
     video_html = f"""
     <div style="width: 90%; margin: 20px auto; text-align: center;">
@@ -96,6 +91,11 @@ def create_html_page(video_url, styled_description_html, styled_sys_req_html, ou
         </video>
     </div>
     """ if video_url else ""
+
+    # 이미지 HTML 생성
+    image_html = ""
+    for image in images:
+        image_html += f'<div style="text-align: center;"><img src="{image}" style="width: 90%;"></div>\n'
 
     # HTML template
     html_template = f"""
@@ -144,6 +144,7 @@ def create_html_page(video_url, styled_description_html, styled_sys_req_html, ou
         </style>
     </head>
     <body>
+        {image_html}
         {video_html}
         <div class="content">
             {styled_description_html}
@@ -157,12 +158,34 @@ def create_html_page(video_url, styled_description_html, styled_sys_req_html, ou
     with open(output_path, 'w', encoding='utf-8') as file:
         file.write(html_template)
 
-def main(url, output_path='detailed_page.html'):
+def fetch_images_from_github(github_url):
+    response = requests.get(github_url)
+    if response.status_code != 200:
+        raise Exception("Failed to fetch GitHub URL")
+
+    soup = BeautifulSoup(response.content, 'html.parser')
+    base_url = "https://raw.githubusercontent.com/"
+    user_repo_path = github_url.split("github.com/")[1].split("/tree/")[0]
+    branch_path = github_url.split("/tree/")[1]
+
+    images = set()  # 이미지를 중복 없이 저장하기 위해 set 사용
+    for link in soup.find_all('a', href=True):
+        if link['href'].endswith(('.png', '.jpg', '.jpeg', '.gif')):
+            raw_image_url = f"{base_url}{user_repo_path}/{branch_path}/{link['href'].split('/')[-1]}"
+            images.add(raw_image_url)
+
+    images = sorted(images)  # 이름 순서대로 정렬
+    return images
+
+def main(url, github_url, output_path='detailed_page.html'):
     html = fetch_page(url)
     description_html, sys_req_html, video_url = parse_page(html)
     styled_description_html, styled_sys_req_html = style_html_content(description_html, sys_req_html)
-    create_html_page(video_url, styled_description_html, styled_sys_req_html, output_path)
+    images = fetch_images_from_github(github_url)
+    create_html_page(video_url, styled_description_html, styled_sys_req_html, images, output_path)
 
 if __name__ == '__main__':
     url = 'https://store.steampowered.com/app/1623730/Palworld/'
-    main(url)
+    github_url = 'https://github.com/cper0309/detail-page-common/tree/main/detail-page-v1-240707'
+    output_file_name = 'palworld'
+    main(url, github_url, output_path=f"{output_file_name}.html")
