@@ -221,7 +221,7 @@ def fetch_images_from_github(github_url):
     for link in soup.find_all('a', href=True):
         href = link['href']
         if href.endswith(('.png', '.jpg', '.jpeg', '.gif')):
-            if 'deprecated' in href:
+            if 'deprecated' in href.split('/')[-1]:
                 continue
             raw_image_url = f"{base_url}{user_repo_path}/{branch_path}/{href.split('/')[-1]}"
             images.add(raw_image_url)
