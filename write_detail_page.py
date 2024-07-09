@@ -220,9 +220,7 @@ def fetch_images_from_github(github_url):
     images = set()  # 이미지를 중복 없이 저장하기 위해 set 사용
     for link in soup.find_all('a', href=True):
         href = link['href']
-        if href.endswith(('.png', '.jpg', '.jpeg', '.gif')):
-            if 'deprecated' in href.split('/')[-1]:
-                continue
+        if href.endswith(('.png', '.jpg', '.jpeg', '.gif')) and 'deprecated' not in href:
             raw_image_url = f"{base_url}{user_repo_path}/{branch_path}/{href.split('/')[-1]}"
             images.add(raw_image_url)
             print(raw_image_url)
