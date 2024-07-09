@@ -122,7 +122,7 @@ def create_html_page(video_url, styled_description_html, styled_sys_req_html, im
     # 비디오 HTML 생성
     video_html = f"""
     <div style="width: 90%; margin: 20px auto; text-align: center;">
-        <video controls autoplay style="width: 100%;">
+        <video controls autoplay muted style="width: 100%;">
             <source src="{video_url}" type="video/mp4">
             Your browser does not support the video tag.
         </video>
